@@ -1,0 +1,528 @@
+
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<meta name="keywords" content="github, repository, generator, music, dubstep, generator, Artur Goulão, Dan Stowell, synth, javascript, js, Marek Bereza,Industrial, interaction, design, portfolio, iphone, music, audio, arduino, processing, openframeworks">
+
+<meta name="description" content="Gitwub - Github Repository Dubstep Generator">
+<meta name="author" content="Artur Goulão Ferreira">
+<meta name="ROBOTS" content="ALL">
+<link rel="image_src" href="http://www.gitwub.net/dubstep.js.png" />
+<title>Gitwub - GitHub Repository Dubstep Generator</title>
+<script src="js/audiolib.min.js"></script>
+<script src="http://code.jquery.com/jquery-1.9.1.js"></script>
+<script src="http://code.jquery.com/ui/1.10.2/jquery-ui.js"></script>
+<link rel="stylesheet" href="http://code.jquery.com/ui/1.10.2/themes/smoothness/jquery-ui.css">
+<link href='http://fonts.googleapis.com/css?family=Noto+Sans' rel='stylesheet' type='text/css'>
+<style>
+
+div#footer {
+    padding: 15px;
+    margin: 0px;
+
+    border:0;
+    outline:0;
+    font-size:100%;
+    vertical-align:baseline;
+    background:transparent;
+display:block;
+
+  background: #F3F3F3;
+  border-top:1px solid #AAAAAA;
+  bottom:0;
+  color:#333333;
+  font-size:0.833333em;
+  padding:5px 0;
+  position:fixed;
+  right:0;
+  text-align:center;
+  width:100%;
+  z-index:5;
+
+}
+
+</style>
+
+
+<script>//<![CDATA[
+(function () {
+    var initializing = false,
+        fnTest = /xyz/.test(function () {
+            xyz;
+        }) ? /\b_super\b/ : /.*/;
+    this.Class = function () {};
+    Class.extend = function (prop) {
+        var _super = this.prototype;
+        initializing = true;
+        var prototype = new this();
+        initializing = false;
+        for (var name in prop) {
+            prototype[name] = typeof prop[name] == "function" && typeof _super[name] == "function" && fnTest.test(prop[name]) ? (function (name, fn) {
+                return function () {
+                    var tmp = this._super;
+                    this._super = _super[name];
+                    var ret = fn.apply(this, arguments);
+                    this._super = tmp;
+                    return ret;
+                };
+            })(name, prop[name]) : prop[name];
+        }
+
+        function Class() {
+            if (!initializing && this.init)
+                this.init.apply(this, arguments);
+        }
+        Class.prototype = prototype;
+        Class.prototype.constructor = Class;
+        Class.extend = arguments.callee;
+        return Class;
+    };
+})();
+//]]></script>
+<script>//<![CDATA[
+var graphics = graphics || {
+    context: null,
+    width: 0,
+    height: 0,
+    x: 0,
+    y: 0
+};
+
+function setColor(r, g, b, a) {
+    if (typeof (a) === "undefined") {
+        graphics.context.fillStyle = "rgb(" + r + ", " + g + ", " + b + ")";
+        graphics.context.globalAlpha = 1;
+    } else {
+        graphics.context.fillStyle = "rgb(" + r + ", " + g + ", " + b + ")";
+        graphics.context.globalAlpha = a;
+    }
+}
+
+function background(r, g, b, a) {
+    setColor(r, g, b, a);
+    rect(0, 0, graphics.width, graphics.height);
+}
+
+function rect(x, y, width, height) {
+    graphics.context.fillRect(x, y, width, height);
+}
+
+function line(ax, ay, bx, by) {
+    graphics.context.strokeStyle = "1px red solid";
+    graphics.context.stroke();
+    graphics.context.moveTo(ax, ay);
+    graphics.context.lineTo(bx, by);
+}
+
+function drawString(str, x, y) {
+    graphics.context.fillText(str, x, y);
+}
+
+function rotate(deg) {
+    graphics.context.rotate(deg * Math.PI / 180.0);
+}
+
+function translate(x, y) {
+    graphics.context.translate(x, y);
+}
+
+function scale(x, y) {
+    graphics.context.scale(x, y);
+}
+
+function pushMatrix() {
+    graphics.context.save();
+}
+
+function popMatrix() {
+    graphics.context.restore();
+}
+
+function map(val, inMin, inMax, outMin, outMax) {
+    return outMin + (outMax - outMin) * (val - inMin) / (inMax - inMin);
+}
+graphics.init = function (place, drawFunc, width, height) {
+    $(place).append('<canvas id="mygraphicscanvas" width="' + width + '" height="' + height + '"></canvas>');
+    var canvas = document.getElementById("mygraphicscanvas");
+    graphics.width = $(place).width();
+    graphics.height = $(place).height();
+    var pos = $("#mygraphicscanvas").offset();
+    graphics.x = pos.left;
+    graphics.y = pos.top + 22;
+    this.context = canvas.getContext("2d");
+    this.context.font = '12px monospace';
+    setInterval(drawFunc, 1000 / 30);
+};
+graphics.Image = Class.extend({
+    init: function (path) {
+        this.img = new Image();
+        this.img.src = path;
+    },
+    draw: function (x, y, width, height) {
+        x = x || 0;
+        y = y || 0;
+        if (width && height) {
+            graphics.context.drawImage(this.img, x, y, width, height);
+        } else {
+            graphics.context.drawImage(this.img, x, y);
+        }
+    }
+});
+//]]></script>
+<script src="js/dsp.js"></script>
+<script>//<![CDATA[
+dsp.Comb = Class.extend({
+    init: function (size) {},
+    feedback: 0.1,
+    filterstore: 0,
+    damp1: 0,
+    damp2: 0,
+    buffer: 0,
+    bufidx: 0,
+    setBuff: function (size) {
+        this.buffer = new Array(size);
+        for (i = 0; i < size; i++) {
+            this.buffer[i] = 0;
+        }
+    },
+    setDamp: function (val) {
+        this.damp1 = val;
+        this.damp2 = 1 - val;
+    },
+    setFeedback: function (fb) {
+        this.feedback = fb;
+    },
+    process: function (inp) {
+        var output = this.buffer[this.bufidx];
+        this.filterstore = (output * this.damp2) + (this.filterstore * this.damp1);
+        this.buffer[this.bufidx] = inp + (this.filterstore * this.feedback);
+        if (++this.bufidx >= this.buffer.length) this.bufidx = 0;
+        return output;
+    }
+});
+dsp.Allpass = Class.extend({
+    init: function () {},
+    process: function (inp) {
+        return inp;
+        var bufout = this.buffer[this.bufidx];
+        var output = -input + bufout;
+        this.buffer[this.bufidx] = this.input + (bufout * this.feedback);
+        if (++this.bufidx >= this.buffer.length) this.bufidx = 0;
+        return output;
+    }
+});
+dsp.Freeverb = Class.extend({
+    init: function (spread) {
+        this.combs = new Array(8);
+        var tunings = [1116, 1188, 1277, 1356, 1422, 1491, 1557, 1617];
+        for (i = 0; i < this.combs.length; i++) {
+            this.combs[i] = new dsp.Comb(tunings[i] + spread);
+            this.combs[i].buffer = new Array(tunings[i] + spread);
+            for (j = 0; j < tunings[i] + spread; j++) {
+                this.combs[i].buffer[j] = 0;
+            }
+        }
+        this.allpasses = new Array(4);
+        this.allpassTunings = [556, 441, 341, 225];
+        for (i = 0; i < this.allpasses.length - 1; i++) {
+            this.allpassTunings += spread;
+            this.allpasses[i] = new dsp.Allpass();
+        }
+        this.update();
+    },
+    wet: 0.25,
+    dry: 1,
+    gain: 1,
+    update: function () {
+        roomsize = 0.6;
+        damp = 0.1;
+        for (i = 0; i < this.combs.length; i++) {
+            this.combs[i].feedback = roomsize;
+        }
+        for (i = 0; i < this.combs.length; i++) {
+            this.combs[i].setDamp(damp);
+        }
+    },
+    process: function (inp) {
+        var out = 0;
+        input = inp * this.gain;
+        for (i = 0; i < this.combs.length; i++) {
+            out += this.combs[i].process(inp);
+        }
+        for (i = 0; i < this.allpasses.length; i++) {
+            if (typeof (this.allpasses[i]) === 'undefined') {
+                this.allpasses[i] = new dsp.Allpass();
+                this.allpasses[i].buffer = new Array(this.allpassTunings[i]);
+                for (j = 0; j < this.allpassTunings[i]; j++) {
+                    this.allpasses[i].buffer[j] = 0;
+                }
+            }
+            out = this.allpasses[i].process(out);
+        }
+        return out * this.wet + inp * this.dry;
+    }
+});
+//]]></script>
+<style type="text/css">body{text-align:center;background-color:#000000;color:#fff;}#info{margin:1em auto;width:600px;text-align:left;padding:2px 1em 1em 1em;background-color:#000; font-family: 'Noto Sans', sans-serif;}h1,h2{font-weight:normal;text-transform:uppercase}p,li{font-size:14px}a{color:#f99}#text{background-color:#000;padding:1em;width:600px;text-align:left;margin:1em auto}div#titlegen{color:#000000;}
+</style>
+<script src="js/dubstep.js"></script>
+
+<script type="text/javascript">
+
+$(function() {
+    $( "button" )
+      .button()
+      .click(function( event ) {
+        
+        $('#go').attr("disabled", true);
+        $('#urlbox').attr("disabled", true);
+        $('#controls').show(1000);
+      $.ajax({
+        type: "GET",
+        url: 'https://api.github.com/repos/' + $('#urlbox').val().split('/',5)[3] + '/' + $('#urlbox').val().split('/',5)[4] + '/git/trees/master?recursive=1',
+        dataType: "json",
+        success: function(result) {
+          var cenas = result.tree;
+          var reg = /^-?\d{2}/;
+          var reg2 = /^-?\d{1}/
+          notes = [];
+            for( i in cenas ) {
+              var tam = "o";
+              if(cenas[i].type == "blob"){
+                if((cenas[i].size).toString().length >= 3){
+                  tam = cenas[i].size;
+                /*$("#github-info").append(
+                    "<li><a href='" + cenas[i].url + "' target='_blank'>" +
+                    (cenas[i].size).toString().match(reg) + "</a></li>"
+                );*/
+notes.push((cenas[i].size).toString().match(reg))
+              }else{
+                /*$("#github-info").append(
+                    "<li><a href='" + cenas[i].url + "' target='_blank'>"
+                     +
+                    (cenas[i].size).toString().match(reg2) + "</a></li>"
+                );*/
+                notes.push((cenas[i].size).toString().match(reg2))
+              }
+              }
+                console.log("i: " + i);
+            }
+            console.log(result);
+           // $("#github-info").append("Notes: " + notes);
+
+            startthebeat();
+        }
+    });
+
+    
+
+});
+  });
+</script>
+
+<script type="text/javascript">
+$(document).ready(function () {
+    graphics.init("#holder", draw, 800, 240);
+    background(255, 255, 255);
+    $('#controls').hide();
+});
+
+function draw() {
+    background(255, 255, 255, 0.4);
+    snareEnvelope = Math.pow(snareEnvelope, 0.5);
+    var g = Math.round(snareEnvelope * 255);
+    var b = Math.max(g, Math.round(kickEnvelope * 255));
+    pushMatrix();
+    translate(400, 100);
+    for (i = 5; i < oscilloscope.length; i += 5) {
+        var alph = 1.0 - i / oscilloscope.length;
+        alph = Math.pow(alph, 0.7);
+        setColor(255, g, b, alph);
+        rect(i / 5 - 5, 100 * (oscilloscope[i] * 0.5) + 0.5, 1 + 50 * kickEnvelope, 2 + 50 * snareEnvelope);
+    }
+    scale(-1, 1);
+    for (i = 5; i < oscilloscope.length; i += 5) {
+        var alph = 1.0 - i / oscilloscope.length;
+        alph = Math.pow(alph, 0.7);
+        setColor(255, g, b, alph);
+        rect(i / 5 - 5, 100 * (oscilloscope[i] * 0.5) + 0.5, 1 + 50 * kickEnvelope, 2 + 50 * snareEnvelope);
+    }
+    popMatrix();
+}
+</script>
+
+<style type="text/css"></style></head>
+<body style="background-color:#FFFFFF">
+
+<div id="holder">
+	<center>
+</center>
+</div>
+
+
+
+<div id="info">
+<ul>
+<li>Insert GitHub repository URL</li>
+<li>Press GitWubify</li>
+<li>Listen to Dubstep generated from the repository</li>
+</ul></p>
+<input id="urlbox" type="textbox" value="https://github.com/hugopeixoto/kiwi" size=70></input>
+<button id="go">GitWubify</button>
+<div id="controls">
+<p>kickDecay</p>
+<div class="kickDecay"></div>
+<div id="kickDecay-result">0.26</div>
+
+<p>Snare Decay 1</p>
+<div class="snareDecay1"></div>
+<div id="snareDecay1-result">0.2</div>
+
+<p>Snare Decay 2</p>
+<div class="snareDecay2"></div>
+<div id="snareDecay2-result">0.26</div>
+
+<p>FreeverbL</p>
+<div class="freeverbL"></div>
+<div id="freeverbL-result">-20</div>
+
+
+<p>FreeverbR</p>
+<div class="freeverbR"></div>
+<div id="freeverbR-result">20</div>
+
+
+<!-- <p>Repository Info</p>
+<div id="github-info"></div>
+-->
+</div>
+</div>
+
+<div id="footer">
+        <footer>Just for the fun of it by <a href="http://twitter.com/arturferreira">@arturferreira</a> - original idea from <a href="https://twitter.com/jpgneves">@jpgneves</a>. </footer> 
+    </div>
+
+</div>
+
+<script type="text/javascript">
+
+$( ".kickDecay" ).slider({
+           animate: true,
+               range: "min",
+               value: 0.26,
+               min: 0,
+               max: 1,
+               step: 0.01,
+                
+               //this gets a live reading of the value and prints it on the page
+               slide: function( event, ui ) {
+                   $( "#kickDecay-result" ).html( ui.value );
+               },
+ 
+               //this updates the hidden form field so we can submit the data using a form
+               change: function(event, ui) {
+               kickDecay = new dsp.Decay(ui.value);
+               
+               }
+            
+               });
+
+$( ".snareDecay1" ).slider({
+           animate: true,
+               range: "min",
+               value: 0.2,
+               min: 0,
+               max: 1,
+               step: 0.01,
+                
+               //this gets a live reading of the value and prints it on the page
+               slide: function( event, ui ) {
+                   $( "#snareDecay1-result" ).html( ui.value );
+               },
+ 
+               //this updates the hidden form field so we can submit the data using a form
+               change: function(event, ui) {
+               snareDecay1 = new dsp.Decay(ui.value);
+               
+               }
+            
+               });
+
+$( ".snareDecay2" ).slider({
+           animate: true,
+               range: "min",
+               value: 0.67,
+               min: 0,
+               max: 1,
+               step: 0.01,
+                
+               //this gets a live reading of the value and prints it on the page
+               slide: function( event, ui ) {
+                   $( "#snareDecay2-result" ).html( ui.value );
+               },
+ 
+               //this updates the hidden form field so we can submit the data using a form
+               change: function(event, ui) {
+               snareDecay2 = new dsp.Decay(ui.value);
+               
+               }
+            
+               });
+
+
+$( ".freeverbL" ).slider({
+           animate: true,
+               range: "min",
+               value: -20,
+               min: -100,
+               max: 100,
+               step: 1,
+                
+               //this gets a live reading of the value and prints it on the page
+               slide: function( event, ui ) {
+                   $( "#freeverbL-result" ).html( ui.value );
+               },
+ 
+               //this updates the hidden form field so we can submit the data using a form
+               change: function(event, ui) {
+               freeverbL = new dsp.Freeverb(ui.value);
+               
+               }
+            
+               });
+
+
+$( ".freeverbR" ).slider({
+           animate: true,
+               range: "min",
+               value: 20,
+               min: -100,
+               max: 100,
+               step: 1,
+                
+               //this gets a live reading of the value and prints it on the page
+               slide: function( event, ui ) {
+                   $( "#freeverbR-result" ).html( ui.value );
+               },
+ 
+               //this updates the hidden form field so we can submit the data using a form
+               change: function(event, ui) {
+               freeverbR = new dsp.Freeverb(ui.value);
+               
+               }
+            
+               });
+
+$("#urlbox").on("click", function() {
+    if ($(this).val() == "https://github.com/hugopeixoto/kiwi")
+        $(this).val("")
+});
+
+
+
+
+
+
+
+
+</script>
+</body></html>
